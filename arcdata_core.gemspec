@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.version     = Core::VERSION
   s.authors     = ["John Laxson"]
   s.email       = ["john.laxson@redcross.org"]
-  s.homepage    = "github.com/redcross/core"
+  s.homepage    = "http://github.com/redcross/core"
   s.summary     = "Common components of the Arcdata applications."
   s.description = "Common components of the Arcdata applications."
   s.license     = ""
