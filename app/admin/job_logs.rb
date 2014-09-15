@@ -1,7 +1,7 @@
 ActiveAdmin.register Core::JobLog, as: 'Job Logs' do
   menu parent: 'System'
   actions :index, :show
-  config.batch_actions=false
+  config.instance_variable_set(:@batch_actions_enabled, false)
 
   index do
     column :id
