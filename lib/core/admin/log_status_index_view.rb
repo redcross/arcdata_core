@@ -1,6 +1,10 @@
+begin
+
+require 'active_admin'
+
 module Core
   module Admin
-    class LogStatusIndexView < ActiveAdmin::Component
+    class LogStatusIndexView < ::ActiveAdmin::Component
       #run_counts = base.select{[controller, name, count(id).as(:count)]}.group{[controller, name]}.group_by{|r| [r.controller, r.name]}
 
       def base
@@ -102,4 +106,8 @@ module Core
 
     end
   end
+end
+
+rescue LoadError
+
 end
