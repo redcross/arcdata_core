@@ -1,24 +1,30 @@
 module Core
   class SerializedColumn < ActiveRecord::ConnectionAdapters::Column
-    def type_cast(val)
-      case type
-      when :array then val.try(:split,',')
-      else super(val)
+    class ArrayType < ::ActiveRecord::Type::Value
+      def cast(value)
+        return value.try(:split, ',')
+      end
+
+      def serialize(value)
+        return val.join(',')
       end
     end
 
-    def type_cast_for_write(value)
-      case value
-      when Array then value.join(',')
-      else super(value)
-      end
-    end
+    CAST_TYPES = {
+      boolean: ::ActiveRecord::Type::Boolean,
+      integer: ::ActiveRecord::Type::Integer,
+      string: ::ActiveRecord::Type::String,
+      float: ::ActiveRecord::Type::Float,
+      date: ::ActiveRecord::Type::Date,
+      datetime: ::ActiveRecord::Type::DateTime,
+      decimal: ::ActiveRecord::Type::Decimal,
+      array: ArrayType,
+      any: ::ActiveRecord::Type::Value,
+    }
 
-    def simplified_type(field_type)
-      case field_type
-      when 'array' then :array
-      else super(field_type)
-      end
+    def initialize(name, default, cast_type, sql_type = nil, null = true)
+      super
+      @cast_type = CAST_TYPES.fetch(cast_type).new
     end
   end
 
@@ -54,21 +60,20 @@ module Core
       end
 
       def serialized_accessor store_attribute, name, type, default: nil
+        column = SerializedColumn.new name.to_s, default, type
 
-        sql_type = case type
+        sql_type = case column.type
         when :string then 'varchar'
         when :double then 'float'
         when :time then 'timestamp'
         else type.to_s
         end
 
-        column = SerializedColumn.new name.to_s, default, sql_type
-
         serialized_columns[name] = [store_attribute, column]
 
         define_method name do
           raw = read_store_attribute store_attribute, name
-          column.type_cast(raw)
+          column.type_cast_from_database(raw)
         end
 
         define_method :"#{name}_before_type_cast" do
@@ -76,7 +81,7 @@ module Core
         end
 
         define_method :"#{name}=" do |val|
-          raw = column.type_cast_for_write(val)
+          raw = column.type_cast_for_database(val)
           write_store_attribute store_attribute, name, raw
         end
 
