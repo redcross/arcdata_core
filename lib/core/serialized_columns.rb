@@ -81,11 +81,13 @@ module Core
         end
 
         scope :"with_#{name}_present", -> do
-          where{ length(Squeel::Nodes::Stub.new(store_attribute).op('->', name.to_s)) > 0 }
+          # `?` is the Postgres hstore operator for hash key presence
+          where(":column_name ? :key", column_name: store_attribute, key: name).exists?
         end
 
         scope :"with_#{name}_value", ->(val) do
-          where{cast(Squeel::Nodes::Stub.new(store_attribute).op('->', name.to_s).as(sql_type)) == val}
+          # `@>` is the Postgres hstore "contains" operator and (in contrast to `->`) will use the column index for queries
+          where(":column_name @> hstore(:key, :value)", column_name: store_attribute, key: name, value: value)
         end
 
       end
