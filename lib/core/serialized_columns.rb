@@ -64,13 +64,6 @@ module Core
 
         serialized_accessor_column_name = "#{arel_table.name}.#{store_attribute}"
 
-        sql_type = case column.type
-        when :string then 'varchar'
-        when :double then 'float'
-        when :time then 'timestamp'
-        else type.to_s
-        end
-
         serialized_columns[name] = [store_attribute, column]
 
         define_method name do
