@@ -62,6 +62,8 @@ module Core
       def serialized_accessor store_attribute, name, type, default: nil
         column = SerializedColumn.new name.to_s, default, type
 
+        serialized_accessor_column_name = "#{arel_table.name}.#{store_attribute}"
+
         sql_type = case column.type
         when :string then 'varchar'
         when :double then 'float'
@@ -86,11 +88,14 @@ module Core
         end
 
         scope :"with_#{name}_present", -> do
-          where{ length(Squeel::Nodes::Stub.new(store_attribute).op('->', name.to_s)) > 0 }
+          # `?` is the Postgres operator for key presence
+          where("#{serialized_accessor_column_name} ? :key", key: name)
         end
 
         scope :"with_#{name}_value", ->(val) do
-          where{cast(Squeel::Nodes::Stub.new(store_attribute).op('->', name.to_s).as(sql_type)) == val}
+          # `@>` is the Postgres "contains" operator and (in contrast to `->`) will use the column index for queries
+          json_value = { name => val }.to_json
+          where("#{serialized_accessor_column_name} @> :json_value", json_value: json_value)
         end
 
       end
