@@ -1,33 +1,4 @@
 module Core
-  class SerializedColumn < ActiveRecord::ConnectionAdapters::Column
-    class ArrayType < ::ActiveRecord::Type::Value
-      def cast(value)
-        return value.try(:split, ',')
-      end
-
-      def serialize(value)
-        return val.join(',')
-      end
-    end
-
-    CAST_TYPES = {
-      boolean: ::ActiveRecord::Type::Boolean,
-      integer: ::ActiveRecord::Type::Integer,
-      string: ::ActiveRecord::Type::String,
-      float: ::ActiveRecord::Type::Float,
-      date: ::ActiveRecord::Type::Date,
-      datetime: ::ActiveRecord::Type::DateTime,
-      decimal: ::ActiveRecord::Type::Decimal,
-      array: ArrayType,
-      any: ::ActiveRecord::Type::Value,
-    }
-
-    def initialize(name, default, cast_type, sql_type = nil, null = true)
-      super
-      @cast_type = CAST_TYPES.fetch(cast_type).new
-    end
-  end
-
   module SerializedColumns
     extend ActiveSupport::Concern
 
@@ -47,37 +18,26 @@ module Core
         @serialized_columns ||= {}
       end
 
-      def store_attribute_columns
-        serialized_columns.values.map(&:first)
-      end
-
-      def content_columns
-        super.reject{|c| store_attribute_columns.include? c.name.to_sym }
-      end
-
-      def columns
-        super + serialized_columns.values.map(&:last)
-      end
-
       def serialized_accessor store_attribute, name, type, default: nil
-        column = SerializedColumn.new name.to_s, default, type
+        serialized_columns[name] = [store_attribute, nil]
 
         serialized_accessor_column_name = "#{arel_table.name}.#{store_attribute}"
 
-        serialized_columns[name] = [store_attribute, column]
-
         define_method name do
-          raw = read_store_attribute store_attribute, name
-          column.type_cast_from_database(raw)
-        end
-
-        define_method :"#{name}_before_type_cast" do
-          read_store_attribute store_attribute, name
+          public_send(store_attribute).fetch(name.to_s, nil) || default
         end
 
         define_method :"#{name}=" do |val|
-          raw = column.type_cast_for_database(val)
-          write_store_attribute store_attribute, name, raw
+          cast_value = case type
+          when :string  then val
+          when :integer then Integer(val)
+          when :decimal then Float(val)
+          when :boolean then !!val
+          else
+            raise "Type not supported by SerializedColumns"
+          end
+
+          public_send(store_attribute).store(name.to_s, cast_value)
         end
 
         scope :"with_#{name}_present", -> do
