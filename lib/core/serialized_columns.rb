@@ -19,7 +19,7 @@ module Core
       end
 
       def serialized_accessor store_attribute, name, type, default: nil
-        serialized_columns[name] = [store_attribute, nil]
+        serialized_columns[name] = [store_attribute, type]
 
         serialized_accessor_column_name = "#{arel_table.name}.#{store_attribute}"
 
