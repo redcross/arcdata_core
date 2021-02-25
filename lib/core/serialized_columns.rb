@@ -32,7 +32,13 @@ module Core
           when :string  then val
           when :integer then Integer(val)
           when :decimal then Float(val)
-          when :boolean then !!val
+          when :boolean then
+            # This is what active admin sends over from the checkbox
+            if val == "0"
+              false
+            else
+              !!val
+            end
           else
             raise "Type not supported by SerializedColumns"
           end
